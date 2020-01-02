@@ -1,0 +1,5 @@
+{
+  "imports": {
+    "react-live": "./react-live.js"
+  }
+}

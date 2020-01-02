@@ -1,0 +1,10 @@
+{
+  "@pika/web": {
+    "webDependencies": [
+       "react-live"
+    ]
+  },
+  "dependencies": {
+    "react-live": "^2.2.2"
+  }
+}
