@@ -56,7 +56,7 @@ return html`
       <${LiveEditor} value=${codeState || snippet} onValueChange="${e => setCodeState(e)}" />
       <${LiveError} />
       <button onClick="${() => saveSnippet()}">Save</button>
-      <input onChange="{e => setFilename(e.target.value)}";
+      <input onChange="${e => setFilename(e.target.value)}";
      }} value=${filename}></input>
       <button onClick="${() => showSaved()}">Show</button>
       <div>
