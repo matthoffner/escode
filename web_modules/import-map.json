@@ -1,5 +1,6 @@
 {
   "imports": {
-    "react-live": "./react-live.js"
+    "react-live": "./react-live.js",
+    "kv-storage-polyfill": "./kv-storage-polyfill.js"
   }
 }

@@ -3,12 +3,34 @@
   <head>
     <meta charset="utf-8">
     <title>escode</title>
+    <base href="/">
+    <link rel="manifest" href="./manifest.json">
     <meta
       name="viewport"
       content="width=device-width, initial-scale=1, shrink-to-fit=no"
     />
-    <link rel="stylesheet" href="/index.css">
+    <script type="importmap">
+	{
+	  "imports": {
+	    "/web_modules/kv-storage-polyfill.js": [
+		"std:kv-storage",
+		"/web_modules/kv-storage-polyfill"
+	    ]
+	  }
+	}
+    </script>    
     <script defer src="/index.js" type='module'></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./sw.js').then(() => {
+            console.log('ServiceWorker registered!');
+          }, (err) => {
+            console.log('ServiceWorker registration failed: ', err);
+          });
+        });
+      }
+    </script>
     <!--
       This HTML file is a template.
       If you open it directly in the browser, you will see an empty page.

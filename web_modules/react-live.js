@@ -10460,6 +10460,20 @@ function encodeInteger(num) {
     return result;
 }
 
+var BitSet = function BitSet(arg) {
+	this.bits = arg instanceof BitSet ? arg.bits.slice() : [];
+};
+
+BitSet.prototype.add = function add (n) {
+	this.bits[Math.floor(n / BITS)] |= 1 << n % BITS;
+};
+
+BitSet.prototype.has = function has (n) {
+	return !!(this.bits[Math.floor(n / BITS)] & (1 << n % BITS));
+};
+
+var BITS = 32;
+
 var Chunk = function Chunk(start, end, content) {
 	this.start = start;
 	this.end = end;
@@ -10743,45 +10757,44 @@ Mappings.prototype.addEdit = function addEdit (sourceIndex, content, loc, nameIn
 };
 
 Mappings.prototype.addUneditedChunk = function addUneditedChunk (sourceIndex, chunk, original, loc, sourcemapLocations) {
-		var this$1 = this;
-
 	var originalCharIndex = chunk.start;
 	var first = true;
 
 	while (originalCharIndex < chunk.end) {
-		if (this$1.hires || first || sourcemapLocations[originalCharIndex]) {
-			this$1.rawSegments.push([this$1.generatedCodeColumn, sourceIndex, loc.line, loc.column]);
+		if (this.hires || first || sourcemapLocations.has(originalCharIndex)) {
+			this.rawSegments.push([this.generatedCodeColumn, sourceIndex, loc.line, loc.column]);
 		}
 
 		if (original[originalCharIndex] === '\n') {
 			loc.line += 1;
 			loc.column = 0;
-			this$1.generatedCodeLine += 1;
-			this$1.raw[this$1.generatedCodeLine] = this$1.rawSegments = [];
-			this$1.generatedCodeColumn = 0;
+			this.generatedCodeLine += 1;
+			this.raw[this.generatedCodeLine] = this.rawSegments = [];
+			this.generatedCodeColumn = 0;
+			first = true;
 		} else {
 			loc.column += 1;
-			this$1.generatedCodeColumn += 1;
+			this.generatedCodeColumn += 1;
+			first = false;
 		}
 
 		originalCharIndex += 1;
-		first = false;
 	}
 
-	this.pending = [this.generatedCodeColumn, sourceIndex, loc.line, loc.column];
+	this.pending = sourceIndex > 0
+		? [this.generatedCodeColumn, sourceIndex, loc.line, loc.column]
+		: null;
 };
 
 Mappings.prototype.advance = function advance (str) {
-		var this$1 = this;
-
 	if (!str) { return; }
 
 	var lines = str.split('\n');
 
 	if (lines.length > 1) {
 		for (var i = 0; i < lines.length - 1; i++) {
-			this$1.generatedCodeLine++;
-			this$1.raw[this$1.generatedCodeLine] = this$1.rawSegments = [];
+			this.generatedCodeLine++;
+			this.raw[this.generatedCodeLine] = this.rawSegments = [];
 		}
 		this.generatedCodeColumn = 0;
 	}
@@ -10813,7 +10826,7 @@ var MagicString = function MagicString(string, options) {
 		byEnd:                 { writable: true, value: {} },
 		filename:              { writable: true, value: options.filename },
 		indentExclusionRanges: { writable: true, value: options.indentExclusionRanges },
-		sourcemapLocations:    { writable: true, value: {} },
+		sourcemapLocations:    { writable: true, value: new BitSet() },
 		storedNames:           { writable: true, value: {} },
 		indentStr:             { writable: true, value: guessIndent(string) }
 	});
@@ -10823,7 +10836,7 @@ var MagicString = function MagicString(string, options) {
 };
 
 MagicString.prototype.addSourcemapLocation = function addSourcemapLocation (char) {
-	this.sourcemapLocations[char] = true;
+	this.sourcemapLocations.add(char);
 };
 
 MagicString.prototype.append = function append (content) {
@@ -10892,9 +10905,7 @@ MagicString.prototype.clone = function clone () {
 		cloned.indentExclusionRanges = this.indentExclusionRanges.slice();
 	}
 
-	Object.keys(this.sourcemapLocations).forEach(function (loc) {
-		cloned.sourcemapLocations[loc] = true;
-	});
+	cloned.sourcemapLocations = new BitSet(this.sourcemapLocations);
 
 	cloned.intro = this.intro;
 	cloned.outro = this.outro;
@@ -10954,8 +10965,6 @@ MagicString.prototype.getIndentString = function getIndentString () {
 };
 
 MagicString.prototype.indent = function indent (indentStr, options) {
-		var this$1 = this;
-
 	var pattern = /^[^\r\n]/gm;
 
 	if (isObject(indentStr)) {
@@ -11010,7 +11019,7 @@ MagicString.prototype.indent = function indent (indentStr, options) {
 
 			while (charIndex < end) {
 				if (!isExcluded[charIndex]) {
-					var char = this$1.original[charIndex];
+					var char = this.original[charIndex];
 
 					if (char === '\n') {
 						shouldIndentNextCharacter = true;
@@ -11020,7 +11029,7 @@ MagicString.prototype.indent = function indent (indentStr, options) {
 						if (charIndex === chunk.start) {
 							chunk.prependRight(indentStr);
 						} else {
-							this$1._splitChunk(chunk, charIndex);
+							this._splitChunk(chunk, charIndex);
 							chunk = chunk.next;
 							chunk.prependRight(indentStr);
 						}
@@ -11100,12 +11109,10 @@ MagicString.prototype.move = function move (start, end, index) {
 };
 
 MagicString.prototype.overwrite = function overwrite (start, end, content, options) {
-		var this$1 = this;
-
 	if (typeof content !== 'string') { throw new TypeError('replacement content must be a string'); }
 
-	while (start < 0) { start += this$1.original.length; }
-	while (end < 0) { end += this$1.original.length; }
+	while (start < 0) { start += this.original.length; }
+	while (end < 0) { end += this.original.length; }
 
 	if (end > this.original.length) { throw new Error('end is out of bounds'); }
 	if (start === end)
@@ -11198,10 +11205,8 @@ MagicString.prototype.prependRight = function prependRight (index, content) {
 };
 
 MagicString.prototype.remove = function remove (start, end) {
-		var this$1 = this;
-
-	while (start < 0) { start += this$1.original.length; }
-	while (end < 0) { end += this$1.original.length; }
+	while (start < 0) { start += this.original.length; }
+	while (end < 0) { end += this.original.length; }
 
 	if (start === end) { return this; }
 
@@ -11218,7 +11223,7 @@ MagicString.prototype.remove = function remove (start, end) {
 		chunk.outro = '';
 		chunk.edit('');
 
-		chunk = end > chunk.end ? this$1.byStart[chunk.end] : null;
+		chunk = end > chunk.end ? this.byStart[chunk.end] : null;
 	}
 	return this;
 };
@@ -11275,12 +11280,11 @@ MagicString.prototype.lastLine = function lastLine () {
 };
 
 MagicString.prototype.slice = function slice (start, end) {
-		var this$1 = this;
 		if ( start === void 0 ) start = 0;
 		if ( end === void 0 ) end = this.original.length;
 
-	while (start < 0) { start += this$1.original.length; }
-	while (end < 0) { end += this$1.original.length; }
+	while (start < 0) { start += this.original.length; }
+	while (end < 0) { end += this.original.length; }
 
 	var result = '';
 
@@ -11337,17 +11341,15 @@ MagicString.prototype.snip = function snip (start, end) {
 };
 
 MagicString.prototype._split = function _split (index) {
-		var this$1 = this;
-
 	if (this.byStart[index] || this.byEnd[index]) { return; }
 
 	var chunk = this.lastSearchedChunk;
 	var searchForward = index > chunk.end;
 
 	while (chunk) {
-		if (chunk.contains(index)) { return this$1._splitChunk(chunk, index); }
+		if (chunk.contains(index)) { return this._splitChunk(chunk, index); }
 
-		chunk = searchForward ? this$1.byStart[chunk.end] : this$1.byEnd[chunk.start];
+		chunk = searchForward ? this.byStart[chunk.end] : this.byEnd[chunk.start];
 	}
 };
 
@@ -11413,8 +11415,6 @@ MagicString.prototype.trim = function trim (charType) {
 };
 
 MagicString.prototype.trimEndAborted = function trimEndAborted (charType) {
-		var this$1 = this;
-
 	var rx = new RegExp((charType || '\\s') + '+$');
 
 	this.outro = this.outro.replace(rx, '');
@@ -11428,13 +11428,13 @@ MagicString.prototype.trimEndAborted = function trimEndAborted (charType) {
 
 		// if chunk was trimmed, we have a new lastChunk
 		if (chunk.end !== end) {
-			if (this$1.lastChunk === chunk) {
-				this$1.lastChunk = chunk.next;
+			if (this.lastChunk === chunk) {
+				this.lastChunk = chunk.next;
 			}
 
-			this$1.byEnd[chunk.end] = chunk;
-			this$1.byStart[chunk.next.start] = chunk.next;
-			this$1.byEnd[chunk.next.end] = chunk.next;
+			this.byEnd[chunk.end] = chunk;
+			this.byStart[chunk.next.start] = chunk.next;
+			this.byEnd[chunk.next.end] = chunk.next;
 		}
 
 		if (aborted) { return true; }
@@ -11449,8 +11449,6 @@ MagicString.prototype.trimEnd = function trimEnd (charType) {
 	return this;
 };
 MagicString.prototype.trimStartAborted = function trimStartAborted (charType) {
-		var this$1 = this;
-
 	var rx = new RegExp('^' + (charType || '\\s') + '+');
 
 	this.intro = this.intro.replace(rx, '');
@@ -11464,11 +11462,11 @@ MagicString.prototype.trimStartAborted = function trimStartAborted (charType) {
 
 		if (chunk.end !== end) {
 			// special case...
-			if (chunk === this$1.lastChunk) { this$1.lastChunk = chunk.next; }
+			if (chunk === this.lastChunk) { this.lastChunk = chunk.next; }
 
-			this$1.byEnd[chunk.end] = chunk;
-			this$1.byStart[chunk.next.start] = chunk.next;
-			this$1.byEnd[chunk.next.end] = chunk.next;
+			this.byEnd[chunk.end] = chunk;
+			this.byStart[chunk.next.start] = chunk.next;
+			this.byEnd[chunk.next.end] = chunk.next;
 		}
 
 		if (aborted) { return true; }

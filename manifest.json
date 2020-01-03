@@ -1,0 +1,11 @@
+{
+  "name": "escode",
+  "short_name": "escode",
+  "theme_color": "#0077ff",
+  "background_color": "#0077ff",
+  "display": "standalone",
+  "orientation": "portrait",
+  "Scope": "/",
+  "start_url": "/",
+  "splash_pages": null
+}
