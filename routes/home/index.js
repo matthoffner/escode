@@ -39,14 +39,20 @@ const deleteCode = async (f) => {
   const code = await savedCode.delete(f);
   showSaved();
 }
+const scope = { useState: React.useState, useEffect: React.useEffect, useRef: React.useRef };
 const snippet = `
 function Component() {
+  const [cheer, setCheer] = useState(null);
+  useEffect(() => {
+    console.log('welcome to escode');
+  });
   return (
    <>
      <div style={{margin: 10}} >
-       <h1>escode</h1>
-       <li>buildless  react live editor</li>
-       <li>uses es modules and persists to indexedb</li>
+       <h1 onClick={() => setCheer('🎉 🎉 🎉 ')}>escode</h1>
+       <h2>{cheer}</h2>
+       <li>buildless react live editor</li>
+       <li>indexeddb storage</li>
        <li>offline pwa caching</li>
      </div>
    </>
@@ -56,13 +62,10 @@ render(<Component />);
 `;
 return html`
   <div>
-    <${LiveProvider} noInline={true} code=${codeState || snippet}>
+    <${LiveProvider} noInline={true} code=${codeState || snippet} scope=${scope}>
       <${LivePreview} />
       ${editor && html`<${LiveEditor} value=${codeState || snippet} onValueChange="${e => setCodeState(e)}" />`}
       <${LiveError} />
-      <div>
-        <button onClick="${() => setShowEditor(!editor)}">${editor ? html`Hide` : html`Show`} Editor</button>
-      </div>
       <button onClick="${() => saveSnippet()}">Save</button>
       <input onChange="${e => setFilename(e.target.value)}" value=${filename}></input>
       <div>
@@ -70,6 +73,9 @@ return html`
 	<ul>
 	  ${folder.map(filename => html`<li><a onClick="${() => loadCode(filename)}" href="javascript:;">${filename}</a> (<a onClick="${() => deleteCode(filename)}" href="javascript:;">remove</a>)</li>`)}
 	</ul>
+      </div>
+      <div>
+        <button onClick="${() => setShowEditor(!editor)}">${editor ? html`Hide` : html`Show`} Editor</button>
       </div>
     </${LiveProvider}>
   </div>
