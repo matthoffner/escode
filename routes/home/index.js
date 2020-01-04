@@ -33,6 +33,7 @@ const showSaved = async () => {
 }
 const loadCode = async (f) => {
   const code = await savedCode.get(f);
+  setFilename(f);
   setCodeState(code);
 }
 const deleteCode = async (f) => {
