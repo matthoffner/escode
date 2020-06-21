@@ -2,7 +2,7 @@
 
 babel-less buildless react-live editor using es modules.
 
-[demo](https://escode-react.netlify.com/)
+[demo](https://escode.on.fleek.co)
 
 ## usage
 
